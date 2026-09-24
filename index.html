@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Cámara Efímera</title>
+
+<meta name="theme-color" content="#0b0b0d">
+<meta name="description" content="Tomá una foto y compartila al instante, sin que quede guardada en el carrete.">
+
+<!-- iOS: modo standalone al agregar a pantalla de inicio -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Efímera">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ══════════════ VISTA 1 · CÁMARA ══════════════ -->
+<section id="view-camera" class="view view--camera">
+  <video id="video" playsinline autoplay muted></video>
+
+  <div id="camera-error" class="blocker" hidden>
+    <div class="blocker__inner">
+      <div class="blocker__icon">📷</div>
+      <h2 id="camera-error-title">No se pudo acceder a la cámara</h2>
+      <p id="camera-error-msg"></p>
+      <button class="btn btn--primary" id="btn-retry-camera">Reintentar</button>
+    </div>
+  </div>
+
+  <div class="camera__top">
+    <button class="iconbtn" id="btn-flip" aria-label="Cambiar cámara">⟲</button>
+    <button class="iconbtn" id="btn-torch" aria-label="Flash" hidden>⚡︎</button>
+    <button class="iconbtn" id="btn-settings" aria-label="Ajustes">⚙︎</button>
+  </div>
+
+  <div class="camera__bottom">
+    <button class="shutter" id="btn-shutter" aria-label="Tomar foto"><span></span></button>
+  </div>
+</section>
+
+<!-- ══════════════ VISTA 2 · PREVIEW / TEXTO / DESTINO ══════════════ -->
+<section id="view-preview" class="view view--preview" hidden>
+  <div class="preview__photo">
+    <img id="preview-img" alt="Foto capturada">
+  </div>
+
+  <div class="preview__panel">
+    <textarea id="caption" rows="2" placeholder="Agregar un comentario (opcional)"></textarea>
+
+    <p class="hint">Elegí el destino final en el panel que abre iOS.</p>
+
+    <div id="dest-grid" class="destgrid"></div>
+
+    <div class="preview__actions">
+      <button class="btn btn--ghost" id="btn-discard">Descartar</button>
+      <button class="btn btn--primary" id="btn-share-generic">Otro destino</button>
+    </div>
+
+    <button class="btn btn--link" id="btn-download" hidden>
+      Descargar la foto (queda guardada en el dispositivo)
+    </button>
+  </div>
+</section>
+
+<!-- ══════════════ VISTA 3 · DESTINOS FAVORITOS ══════════════ -->
+<section id="view-destinations" class="view view--sheet" hidden>
+  <header class="sheet__head">
+    <button class="btn btn--link" data-back>‹ Volver</button>
+    <h1>Destinos favoritos</h1>
+    <span class="sheet__spacer"></span>
+  </header>
+
+  <div class="sheet__body">
+    <p class="hint hint--block">
+      Son atajos visuales para recordar a dónde va cada foto. La Web Share API no
+      permite elegir la app desde el código: todos abren el mismo panel de compartir
+      de iOS y ahí seleccionás el chat o el contacto.
+    </p>
+
+    <ul id="dest-list" class="destlist"></ul>
+
+    <form id="dest-form" class="destform">
+      <div class="destform__row">
+        <input type="text" id="dest-emoji" class="destform__emoji" maxlength="2" placeholder="📦" aria-label="Ícono">
+        <input type="text" id="dest-name" maxlength="24" placeholder="Nombre del destino" aria-label="Nombre" required>
+      </div>
+      <div class="destform__row">
+        <input type="color" id="dest-color" value="#3b82f6" aria-label="Color">
+        <button class="btn btn--primary" type="submit" id="dest-submit">Agregar</button>
+        <button class="btn btn--ghost" type="button" id="dest-cancel" hidden>Cancelar</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ══════════════ VISTA 4 · AJUSTES ══════════════ -->
+<section id="view-settings" class="view view--sheet" hidden>
+  <header class="sheet__head">
+    <button class="btn btn--link" data-back>‹ Volver</button>
+    <h1>Ajustes</h1>
+    <span class="sheet__spacer"></span>
+  </header>
+
+  <div class="sheet__body">
+    <label class="field">
+      <span class="field__label">Resolución máxima</span>
+      <select id="set-size">
+        <option value="1080">1080 px — liviana</option>
+        <option value="1600">1600 px — equilibrada</option>
+        <option value="2200">2200 px — detalle</option>
+        <option value="0">Nativa de la cámara</option>
+      </select>
+    </label>
+
+    <label class="field">
+      <span class="field__label">Calidad JPEG · <output id="set-quality-out">85</output>%</span>
+      <input type="range" id="set-quality" min="50" max="100" step="5">
+    </label>
+
+    <label class="field field--row">
+      <span class="field__label">Confirmar antes de descartar</span>
+      <input type="checkbox" id="set-confirm">
+    </label>
+
+    <button class="btn btn--link" id="btn-open-dest">Editar destinos favoritos ›</button>
+
+    <p class="hint hint--block">
+      La foto vive solo en la memoria de la app hasta que la compartís o la descartás.
+      No se escribe en el carrete ni en el almacenamiento del navegador.
+      Acá solo se guardan tus destinos y estas preferencias.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════ OVERLAYS ══════════════ -->
+<div id="overlay" class="overlay" hidden>
+  <div class="spinner"></div>
+  <p id="overlay-text">Compartiendo…</p>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<canvas id="canvas" hidden></canvas>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
