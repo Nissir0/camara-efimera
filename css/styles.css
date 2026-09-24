@@ -1,0 +1,453 @@
+/* ══════════════════════════════════════════════════════════════
+   Cámara Efímera — mobile-first, pensado para iPhone en standalone
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:        #0b0b0d;
+  --surface:   #17171b;
+  --surface-2: #232329;
+  --line:      #34343c;
+  --text:      #f4f4f5;
+  --text-dim:  #a1a1aa;
+  --accent:    #3b82f6;
+  --danger:    #ef4444;
+  --ok:        #22c55e;
+
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  overscroll-behavior: none;
+}
+
+body { position: fixed; inset: 0; }
+
+.view { position: absolute; inset: 0; display: flex; flex-direction: column; }
+[hidden] { display: none !important; }
+
+/* ── Vista cámara ───────────────────────────────────────────── */
+
+.view--camera { background: #000; }
+
+#video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.camera__top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: calc(var(--safe-top) + 12px) calc(var(--safe-right) + 16px) 0 calc(var(--safe-left) + 16px);
+}
+
+.camera__top #btn-flip { margin-right: auto; }
+
+.iconbtn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.iconbtn[aria-pressed="true"] { background: var(--accent); }
+
+.camera__bottom {
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  padding-bottom: calc(var(--safe-bottom) + 32px);
+}
+
+.shutter {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, .9);
+  background: transparent;
+  padding: 5px;
+  cursor: pointer;
+}
+
+.shutter span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .12s ease;
+}
+
+.shutter:active span { transform: scale(.86); }
+.shutter:disabled { opacity: .4; }
+
+/* Destello al disparar */
+.flash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 90;
+  pointer-events: none;
+  animation: flash .28s ease-out forwards;
+}
+
+@keyframes flash {
+  from { opacity: .85; }
+  to   { opacity: 0; }
+}
+
+/* ── Bloqueo por permiso denegado ───────────────────────────── */
+
+.blocker {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 24px;
+}
+
+.blocker__inner { max-width: 320px; text-align: center; }
+.blocker__icon  { font-size: 44px; margin-bottom: 12px; }
+.blocker h2     { font-size: 19px; margin: 0 0 8px; }
+.blocker p      { color: var(--text-dim); font-size: 15px; margin: 0 0 20px; }
+
+/* ── Vista preview ──────────────────────────────────────────── */
+
+.view--preview { background: var(--bg); }
+
+.preview__photo {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  padding-top: var(--safe-top);
+}
+
+#preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.preview__panel {
+  flex: 0 0 auto;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 14px calc(var(--safe-right) + 16px) calc(var(--safe-bottom) + 14px) calc(var(--safe-left) + 16px);
+  max-height: 62%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#caption {
+  width: 100%;
+  resize: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 16px; /* evita el zoom automático de iOS */
+}
+
+#caption:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.hint {
+  color: var(--text-dim);
+  font-size: 12.5px;
+  margin: 8px 2px 12px;
+}
+
+.hint--block {
+  margin: 18px 0;
+  line-height: 1.55;
+}
+
+/* ── Grilla de destinos ─────────────────────────────────────── */
+
+.destgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.destgrid:empty { display: none; }
+
+.dest {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 12px 6px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.dest:active { transform: scale(.96); }
+
+.dest__badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+}
+
+.dest__name {
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: center;
+  word-break: break-word;
+}
+
+.preview__actions { display: flex; gap: 10px; }
+.preview__actions .btn { flex: 1; }
+
+/* ── Hojas (destinos / ajustes) ─────────────────────────────── */
+
+.view--sheet { background: var(--bg); }
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(var(--safe-top) + 10px) 12px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sheet__head h1 { font-size: 17px; margin: 0; flex: 1; text-align: center; }
+.sheet__spacer  { width: 64px; }
+.sheet__head .btn--link { width: 64px; text-align: left; }
+
+.sheet__body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px calc(var(--safe-right) + 16px) calc(var(--safe-bottom) + 24px) calc(var(--safe-left) + 16px);
+}
+
+/* ── Lista editable de destinos ─────────────────────────────── */
+
+.destlist { list-style: none; margin: 0 0 18px; padding: 0; }
+
+.destlist li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  margin-bottom: 8px;
+}
+
+.destlist .dest__badge { width: 32px; height: 32px; font-size: 16px; flex: 0 0 auto; }
+.destlist .destlist__name { flex: 1; font-size: 15px; word-break: break-word; }
+
+.minibtn {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.minibtn:disabled { opacity: .3; }
+.minibtn--danger { color: var(--danger); }
+
+.empty {
+  color: var(--text-dim);
+  font-size: 14px;
+  text-align: center;
+  padding: 18px 0;
+}
+
+/* ── Formulario de destino ──────────────────────────────────── */
+
+.destform {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.destform__row { display: flex; gap: 10px; align-items: center; }
+
+.destform input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 16px;
+}
+
+.destform__emoji { flex: 0 0 58px !important; text-align: center; }
+
+.destform input[type="color"] {
+  flex: 0 0 46px;
+  height: 42px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.destform__row .btn { flex: 1; }
+
+/* ── Campos de ajustes ──────────────────────────────────────── */
+
+.field { display: block; margin-bottom: 20px; }
+.field__label { display: block; font-size: 14px; color: var(--text-dim); margin-bottom: 8px; }
+
+.field--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.field--row .field__label { margin: 0; color: var(--text); font-size: 15px; }
+
+.field select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 11px 12px;
+  font: inherit;
+  font-size: 16px;
+}
+
+.field input[type="range"] { width: 100%; accent-color: var(--accent); }
+.field input[type="checkbox"] { width: 26px; height: 26px; accent-color: var(--accent); }
+
+/* ── Botones ────────────────────────────────────────────────── */
+
+.btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 13px 18px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.btn--primary { background: var(--accent); color: #fff; }
+.btn--ghost   { background: transparent; border: 1px solid var(--line); }
+
+.btn--link {
+  background: none;
+  color: var(--accent);
+  padding: 10px 2px;
+  text-align: left;
+}
+
+.btn:active { opacity: .75; }
+
+/* ── Overlay y toast ────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, .25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.overlay--done .spinner {
+  animation: none;
+  border: 0;
+  font-size: 34px;
+  color: var(--ok);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 28px);
+  transform: translateX(-50%);
+  z-index: 110;
+  background: rgba(28, 28, 32, .96);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 11px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  max-width: calc(100vw - 40px);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
